@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
 
 	"github.com/prashantkumbhar2002/go_students_api/internal/config"
 )
@@ -18,8 +19,28 @@ func main() {
 
 	// TODO: Initialize logger
 	// TODO: Initialize storage (database)
-	// TODO: Initialize router & handlers
-	// TODO: Start HTTP server
 
-	log.Println("Starting Students API server...")
+
+	// Initialize router & handlers
+	router := http.NewServeMux()
+
+	router.HandleFunc("GET /", func (w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("This is Home page,.... It works!"))
+	})
+
+	// Start HTTP server
+	server := http.Server{
+		Addr: fmt.Sprintf("%s:%d", cfg.HTTPServer.Host, cfg.HTTPServer.Port),
+		Handler: router,
+		// ReadTimeout: cfg.HTTPServer.Timeout,
+		// IdleTimeout: cfg.HTTPServer.IdleTimeout,
+	}
+    
+	log.Printf("Starting Students API server at address: %s:%d", cfg.HTTPServer.Host, cfg.HTTPServer.Port)
+	err := server.ListenAndServe()
+	if err != nil {
+		log.Fatalf("Failed to start server: %s", err.Error())
+	}
+
+	log.Println("Server started on port", cfg.HTTPServer.Port)
 }
