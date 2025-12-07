@@ -5,3 +5,4 @@ http_server:
   port: 8075
   timeout: 4s        # request timeout
   idle_timeout: 60s  # idle connection timeout
+  shutdown_timeout: 10s # shutdown timeout
