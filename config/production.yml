@@ -1,0 +1,8 @@
+env: "production"
+storage_path: "/var/lib/students_api/storage.db"  # Production database path
+http_server: 
+  host: "0.0.0.0"      # Listen on all interfaces
+  port: 8080
+  timeout: 10s         # Longer timeout for production
+  idle_timeout: 120s   # Longer idle timeout
+
