@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/prashantkumbhar2002/go_students_api/internal/config"
+	"github.com/prashantkumbhar2002/go_students_api/internal/http/handlers/students"
 )
 
 func main() {
@@ -31,6 +32,8 @@ func main() {
 	router.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("This is Home page,.... It works!"))
 	})
+
+	router.HandleFunc("POST /students", students.New())
 
 	router.HandleFunc("GET /slow", func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(5 * time.Second)
