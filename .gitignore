@@ -80,4 +80,4 @@ vendor/
 .vscode/launch.json
 .vscode/tasks.json
 
-storage
+/storage

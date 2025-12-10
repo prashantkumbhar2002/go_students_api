@@ -12,6 +12,7 @@ import (
 
 	"github.com/prashantkumbhar2002/go_students_api/internal/config"
 	"github.com/prashantkumbhar2002/go_students_api/internal/http/handlers/students"
+	"github.com/prashantkumbhar2002/go_students_api/internal/storage/sqlite"
 )
 
 func main() {
@@ -24,7 +25,15 @@ func main() {
 	fmt.Printf("Server will run on: %s:%d\n", cfg.HTTPServer.Host, cfg.HTTPServer.Port)
 
 	// TODO: Initialize logger
-	// TODO: Initialize storage (database)
+
+
+	// Initialize storage (database)
+	storage, err := sqlite.NewSqlite(cfg)
+	if err != nil {
+		log.Fatalf("Error initializing SQLite storage: %v", err)
+	}
+
+	log.Println("SQLite storage initialized successfully")
 
 	// Initialize router & handlers
 	router := http.NewServeMux()
@@ -33,7 +42,7 @@ func main() {
 		w.Write([]byte("This is Home page,.... It works!"))
 	})
 
-	router.HandleFunc("POST /students", students.New())
+	router.HandleFunc("POST /students", students.New(storage))
 
 	router.HandleFunc("GET /slow", func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(5 * time.Second)

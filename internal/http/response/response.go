@@ -47,6 +47,8 @@ func WriteValidationErrors(w http.ResponseWriter, status int, errors validator.V
 			errMsgs = append(errMsgs, fmt.Sprintf("%s must be greater than %s", err.Field(), err.Param()))
 		case "max":
 			errMsgs = append(errMsgs, fmt.Sprintf("%s must be less than %s", err.Field(), err.Param()))
+		case "email":
+			errMsgs = append(errMsgs, fmt.Sprintf("%s is not a valid email", err.Field()))
 		default:
 			errMsgs = append(errMsgs, fmt.Sprintf("%s is not valid for tag %s", err.Field(), err.ActualTag()))
 		}
