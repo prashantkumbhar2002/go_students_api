@@ -10,12 +10,12 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/prashantkumbhar2002/go_students_api/internal/http/response"
-	"github.com/prashantkumbhar2002/go_students_api/internal/types"
 	"github.com/prashantkumbhar2002/go_students_api/internal/storage"
+	"github.com/prashantkumbhar2002/go_students_api/internal/types"
 )
 
-func NewStudentHandler(storage storage.Storage) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request){
+func NewStudentHandler(store storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 
 		var student types.Student
 		// Decode the request body into the student struct
@@ -32,7 +32,7 @@ func NewStudentHandler(storage storage.Storage) http.HandlerFunc {
 			return
 		}
 
-		// Request Body validation 
+		// Request Body validation
 		if err := validator.New().Struct(student); err != nil {
 			slog.Error("Error validating request body", "error", err)
 			response.WriteValidationErrors(w, http.StatusBadRequest, err.(validator.ValidationErrors)) // type assertion to get the ValidationErrors
@@ -40,7 +40,7 @@ func NewStudentHandler(storage storage.Storage) http.HandlerFunc {
 		}
 
 		// Create the student in the database
-		id, err := storage.CreateStudent(student.Name, student.Email, student.Age)
+		id, err := store.CreateStudent(student.Name, student.Email, student.Age)
 		if err != nil {
 			slog.Error("Error creating student in the database", "error", err)
 			response.WriteError(w, http.StatusInternalServerError, "error creating student", err.Error())
@@ -54,27 +54,29 @@ func NewStudentHandler(storage storage.Storage) http.HandlerFunc {
 	}
 }
 
-func GetStudentHandler(storage storage.Storage) http.HandlerFunc {
+func GetStudentHandler(store storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// id := r.URL.Query().Get("id") // Reading the query parameters
 		id := r.PathValue("id") // Reading the path parameters
 		slog.Info("ID", "id", id)
 		idInt, err := strconv.ParseInt(id, 10, 64)
 		if err != nil {
-			slog.Error("Error parsing ID", "error", err)
+			slog.Error("Error parsing ID: " + id + " and error: " + err.Error())
 			response.WriteError(w, http.StatusBadRequest, "invalid ID", err.Error())
 			return
 		}
 
 		// Get the student from the database
-		student, err := storage.GetStudent(idInt)
+		student, err := store.GetStudent(idInt)
 		if err != nil {
-			if err.Error() == "student not found" {
-				slog.Error("Student not found", "error", err)
+			// Use errors.Is() to check for domain-specific errors
+			// This decouples the handler from database implementation details
+			if errors.Is(err, storage.ErrNotFound) {
+				slog.Error("Student not found with id: " + id, "error", err)
 				response.WriteError(w, http.StatusNotFound, "student not found", err.Error())
 				return
 			}
-			slog.Error("Error getting student", "error", err)
+			slog.Error("Error getting student with id: " + id + " and error: " + err.Error())
 			response.WriteError(w, http.StatusInternalServerError, "internal server error", err.Error())
 			return
 		}

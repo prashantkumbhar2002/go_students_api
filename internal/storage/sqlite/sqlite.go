@@ -3,10 +3,12 @@ package sqlite
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"log/slog"
 
 	_ "github.com/mattn/go-sqlite3" // We are using _ to import the sqlite3 driver (Why? Because we are not using the sqlite3 driver in this file,)
 	"github.com/prashantkumbhar2002/go_students_api/internal/config"
+	"github.com/prashantkumbhar2002/go_students_api/internal/storage"
 	"github.com/prashantkumbhar2002/go_students_api/internal/types"
 )
 
@@ -85,7 +87,8 @@ func (s *Sqlite) GetStudent(id int64) (types.Student, error) {
 	stmt, err := s.Db.Prepare("SELECT id, name, email, age FROM students WHERE id = ?")
 	if err != nil {
 		slog.Error("Error preparing SQL statement to get student", "error", err)
-		return student, err
+		// Wrap the database error with our domain error using fmt.Errorf with %w
+		return student, fmt.Errorf("%w: %v", storage.ErrDatabase, err)
 	}
 	// close the statement after the execution
 	defer stmt.Close() // This is a good practice to close the statement after the execution, it helps to free up the resources.
@@ -95,10 +98,12 @@ func (s *Sqlite) GetStudent(id int64) (types.Student, error) {
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			slog.Error("Student not found", "error", err)
-			return student, errors.New("student not found")
+			// Return the domain-specific error, not a string-based error
+			return student, storage.ErrNotFound
 		}
 		slog.Error("Error executing SQL statement to get student", "error", err)
-		return student, errors.New("error executing SQL statement to get student: " + err.Error())
+		// Wrap the database error with our domain error
+		return student, fmt.Errorf("%w: %v", storage.ErrDatabase, err)
 	}
 
 	// Return the student
