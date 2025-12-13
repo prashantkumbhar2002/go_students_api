@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/prashantkumbhar2002/go_students_api/internal/http/helpers"
 	"github.com/prashantkumbhar2002/go_students_api/internal/http/response"
 	"github.com/prashantkumbhar2002/go_students_api/internal/storage"
 	"github.com/prashantkumbhar2002/go_students_api/internal/types"
@@ -72,7 +73,7 @@ func GetStudentHandler(store storage.Storage) http.HandlerFunc {
 			// Use errors.Is() to check for domain-specific errors
 			// This decouples the handler from database implementation details
 			if errors.Is(err, storage.ErrNotFound) {
-				slog.Error("Student not found with id: " + id, "error", err)
+				slog.Error("Student not found with id: "+id, "error", err)
 				response.WriteError(w, http.StatusNotFound, "student not found", err.Error())
 				return
 			}
@@ -85,16 +86,34 @@ func GetStudentHandler(store storage.Storage) http.HandlerFunc {
 	}
 }
 
-
 func GetStudentsListHandler(store storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Get the students list from the database
-		slog.Info("Getting All the students from the database")
+		// Parse pagination parameters from query string
+		pagination := helpers.ParsePaginationParams(r)
 
-		students, err := store.GetStudentsList()
+		slog.Info("Getting students list with pagination", "page", pagination.Page, "limit", pagination.Limit)
+
+		// Calculate offset: (page - 1) * limit
+		// Example: page=1, limit=20 -> offset=0
+		//          page=2, limit=20 -> offset=20
+		offset := (pagination.Page - 1) * pagination.Limit
+
+		// Get total count (for pagination metadata)
+		totalCount, err := store.GetStudentsCount()
 		if err != nil {
-			// Use errors.Is() to check for domain-specific errors
-			// This decouples the handler from database implementation details
+			if errors.Is(err, storage.ErrDatabase) {
+				slog.Error("Database error while getting students count", "error", err)
+				response.WriteError(w, http.StatusInternalServerError, "database error", err.Error())
+				return
+			}
+			slog.Error("Internal server error while getting students count", "error", err)
+			response.WriteError(w, http.StatusInternalServerError, "internal server error", err.Error())
+			return
+		}
+
+		// Get paginated students list
+		students, err := store.GetStudentsList(offset, pagination.Limit)
+		if err != nil {
 			if errors.Is(err, storage.ErrDatabase) {
 				slog.Error("Database error while getting students list", "error", err)
 				response.WriteError(w, http.StatusInternalServerError, "database error", err.Error())
@@ -104,7 +123,25 @@ func GetStudentsListHandler(store storage.Storage) http.HandlerFunc {
 			response.WriteError(w, http.StatusInternalServerError, "internal server error", err.Error())
 			return
 		}
-		slog.Info("All the students fetched successfully", "number of students", len(students))
-		response.WriteJson(w, http.StatusOK, students)
+
+		// Calculate total pages
+		totalPages := int(totalCount) / pagination.Limit
+		if int(totalCount)%pagination.Limit != 0 {
+			totalPages++
+		}
+
+		// Build paginated response with metadata
+		paginatedResp := types.PaginatedResponse{
+			Data:       students,
+			Page:       pagination.Page,
+			Limit:      pagination.Limit,
+			TotalItems: totalCount,
+			TotalPages: totalPages,
+			HasNext:    pagination.Page < totalPages,
+			HasPrev:    pagination.Page > 1,
+		}
+
+		slog.Info("Students fetched successfully", "returned", len(students), "total", totalCount, "page", pagination.Page, "total_pages", totalPages)
+		response.WriteJson(w, http.StatusOK, paginatedResp)
 	}
 }

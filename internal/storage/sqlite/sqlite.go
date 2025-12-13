@@ -110,38 +110,55 @@ func (s *Sqlite) GetStudent(id int64) (types.Student, error) {
 	return student, nil
 }
 
-
-func (s *Sqlite) GetStudentsList() ([]types.Student, error) {
+// GetStudentsList returns paginated list of students
+// offset: number of records to skip, limit: max number of records to return
+func (s *Sqlite) GetStudentsList(offset, limit int) ([]types.Student, error) {
 	var students []types.Student
 
-	stmt, err := s.Db.Prepare("SELECT id, name, email, age FROM students")
+	// Use LIMIT and OFFSET for pagination
+	// ORDER BY id ensures consistent ordering across pages
+	stmt, err := s.Db.Prepare("SELECT id, name, email, age FROM students ORDER BY id LIMIT ? OFFSET ?")
 	if err != nil {
 		slog.Error("Error preparing SQL statement to get students list", "error", err)
 		return students, fmt.Errorf("%w: %v", storage.ErrDatabase, err)
 	}
 	defer stmt.Close()
 
-	rows, err := stmt.Query()
-
+	rows, err := stmt.Query(limit, offset)
 	if err != nil {
 		slog.Error("Error executing SQL statement to get students list", "error", err)
 		return students, fmt.Errorf("%w: %v", storage.ErrDatabase, err)
 	}
-
 	defer rows.Close()
-	
+
 	for rows.Next() {
 		var student types.Student
 		err = rows.Scan(&student.ID, &student.Name, &student.Email, &student.Age)
 		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				slog.Error("No rows found", "error", err)
-				return students, storage.ErrNotFound
-			}
 			slog.Error("Error scanning row to get students list", "error", err)
 			return students, fmt.Errorf("%w: %v", storage.ErrDatabase, err)
 		}
 		students = append(students, student)
 	}
+
+	// Check for errors from iterating over rows
+	if err = rows.Err(); err != nil {
+		slog.Error("Error iterating over rows", "error", err)
+		return students, fmt.Errorf("%w: %v", storage.ErrDatabase, err)
+	}
+
 	return students, nil
+}
+
+// GetStudentsCount returns the total count of students in the database
+func (s *Sqlite) GetStudentsCount() (int64, error) {
+	var count int64
+
+	err := s.Db.QueryRow("SELECT COUNT(*) FROM students").Scan(&count)
+	if err != nil {
+		slog.Error("Error getting students count", "error", err)
+		return 0, fmt.Errorf("%w: %v", storage.ErrDatabase, err)
+	}
+
+	return count, nil
 }

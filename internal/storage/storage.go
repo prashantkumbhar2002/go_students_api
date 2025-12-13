@@ -17,5 +17,9 @@ var (
 type Storage interface {
 	CreateStudent(name string, email string, age int) (int64, error)
 	GetStudent(id int64) (types.Student, error)
-	GetStudentsList() ([]types.Student, error)
+	// GetStudentsList returns paginated list of students
+	// offset: number of records to skip, limit: max number of records to return
+	GetStudentsList(offset, limit int) ([]types.Student, error)
+	// GetStudentsCount returns total count of students in database
+	GetStudentsCount() (int64, error)
 }
