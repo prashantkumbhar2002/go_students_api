@@ -7,6 +7,11 @@ A REST API server for managing student data, built with Go.
 - **Configuration Management**: Using cleanenv for flexible config handling
 - **SQLite Database**: Lightweight storage for student data
 - **RESTful API**: Clean REST endpoints for student operations
+- **Pagination**: Production-grade offset-based pagination for large datasets
+- **Domain-Driven Errors**: Proper error handling with sentinel errors
+- **Graceful Shutdown**: Safe server shutdown with timeout handling
+- **Validation**: Request body validation using go-playground/validator
+- **Clean Architecture**: Separation of concerns with handlers, storage, and types
 
 ## Getting Started
 
@@ -46,21 +51,143 @@ go run cmd/go_students_api/main.go
 CONFIG_PATH=config/production.yml go run cmd/go_students_api/main.go
 ```
 
+## API Endpoints
+
+### Create Student
+```bash
+POST /students
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "age": 22
+}
+```
+
+### Get Student by ID
+```bash
+GET /students/{id}
+```
+
+### Get Students List (Paginated)
+```bash
+# Default: page=1, limit=20
+GET /students
+
+# Custom pagination
+GET /students?page=2&limit=50
+
+# Response includes metadata
+{
+  "data": [...],
+  "page": 2,
+  "limit": 50,
+  "total_items": 1500,
+  "total_pages": 30,
+  "has_next": true,
+  "has_prev": true
+}
+```
+
+See [docs/PAGINATION_GUIDE.md](docs/PAGINATION_GUIDE.md) for detailed pagination documentation.
+
 ## Project Structure
 
 ```
 students_api/
 ├── cmd/
 │   └── go_students_api/
-│       └── main.go           # Application entry point
+│       └── main.go                     # Application entry point
 ├── config/
-│   ├── local.yml             # Local environment config
-│   ├── production.yml        # Production config
-│   └── README.md             # Config documentation
+│   ├── local.yml                       # Local environment config
+│   ├── production.yml                  # Production config
+│   └── README.md                       # Config documentation
+├── docs/
+│   └── PAGINATION_GUIDE.md             # Pagination strategies guide
+├── examples/                           # Example usage and patterns
 ├── internal/
-│   └── config/
-│       └── config.go         # Config loading logic
+│   ├── config/
+│   │   └── config.go                   # Config loading logic
+│   ├── http/
+│   │   ├── handlers/
+│   │   │   └── students/
+│   │   │       └── students.go         # Student handlers (CRUD + List)
+│   │   ├── helpers/
+│   │   │   └── helper.go               # HTTP helper functions (pagination parsing)
+│   │   └── response/
+│   │       └── response.go             # JSON response utilities
+│   ├── storage/
+│   │   ├── sqlite/
+│   │   │   └── sqlite.go               # SQLite implementation
+│   │   └── storage.go                  # Storage interface & domain errors
+│   └── types/
+│       └── types.go                    # Domain types & structs
 ├── storage/
-│   └── storage.db            # SQLite database
-└── go.mod
+│   └── storage.db                      # SQLite database file
+├── go.mod                              # Go module definition
+├── go.sum                              # Dependency checksums
+└── README.md                           # This file
+```
+
+## Architecture & Design Patterns
+
+This project follows production-grade Go best practices:
+
+### 1. **Clean Architecture**
+- **Separation of Concerns**: Handlers, storage, and domain logic are separated
+- **Dependency Inversion**: Handlers depend on storage interface, not concrete implementations
+- **Domain-Driven Design**: Business logic in domain layer, infrastructure details in implementation
+
+### 2. **Error Handling**
+```go
+// Domain errors defined in storage package
+var (
+    ErrNotFound    = errors.New("student not found")
+    ErrDuplicate   = errors.New("student already exists")
+    ErrDatabase    = errors.New("database error")
+)
+
+// Handlers check using errors.Is()
+if errors.Is(err, storage.ErrNotFound) {
+    // Handle not found case
+}
+```
+
+### 3. **Pagination Strategy**
+- Offset-based pagination with `LIMIT` and `OFFSET`
+- Maximum limit enforcement (100 items per request)
+- Rich metadata (total count, page info, navigation flags)
+- Memory-safe for large datasets
+
+### 4. **Validation**
+- Request body validation using `go-playground/validator/v10`
+- Type-safe validation with struct tags
+- Clear error messages for clients
+
+### 5. **Graceful Shutdown**
+- Signal handling (SIGINT, SIGTERM)
+- Graceful server shutdown with timeout
+- Active requests completion before shutdown
+
+## Dependencies
+
+```go
+require (
+    github.com/ilyakaznacheev/cleanenv v1.5.0
+    github.com/mattn/go-sqlite3 v1.14.24
+    github.com/go-playground/validator/v10 v10.23.0
+)
+```
+
+### Building
+```bash
+# Build for current platform
+go build -o bin/students-api cmd/go_students_api/main.go
+
+# Build for Linux
+GOOS=linux GOARCH=amd64 go build -o bin/students-api-linux cmd/go_students_api/main.go
+
+# Build for Windows
+GOOS=windows GOARCH=amd64 go build -o bin/students-api.exe cmd/go_students_api/main.go
 ```
