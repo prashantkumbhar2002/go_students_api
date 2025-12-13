@@ -42,7 +42,8 @@ func main() {
 		w.Write([]byte("This is Home page,.... It works!"))
 	})
 
-	router.HandleFunc("POST /students", students.New(storage))
+	router.HandleFunc("POST /students", students.NewStudentHandler(storage))
+	router.HandleFunc("GET /students/{id}", students.GetStudentHandler(storage))
 
 	router.HandleFunc("GET /slow", func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(5 * time.Second)

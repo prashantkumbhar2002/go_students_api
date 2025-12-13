@@ -2,10 +2,12 @@ package sqlite
 
 import (
 	"database/sql"
+	"errors"
 	"log/slog"
 
-	"github.com/prashantkumbhar2002/go_students_api/internal/config"
 	_ "github.com/mattn/go-sqlite3" // We are using _ to import the sqlite3 driver (Why? Because we are not using the sqlite3 driver in this file,)
+	"github.com/prashantkumbhar2002/go_students_api/internal/config"
+	"github.com/prashantkumbhar2002/go_students_api/internal/types"
 )
 
 type Sqlite struct {
@@ -75,4 +77,30 @@ func (s *Sqlite) CreateStudent(name string, email string, age int) (int64, error
 	// Return the last inserted ID
 	slog.Info("Student created successfully in SQLite database", "id", id)
 	return id, nil
+}
+
+func (s *Sqlite) GetStudent(id int64) (types.Student, error) {
+	student := types.Student{}
+
+	stmt, err := s.Db.Prepare("SELECT id, name, email, age FROM students WHERE id = ?")
+	if err != nil {
+		slog.Error("Error preparing SQL statement to get student", "error", err)
+		return student, err
+	}
+	// close the statement after the execution
+	defer stmt.Close() // This is a good practice to close the statement after the execution, it helps to free up the resources.
+
+	// Execute the SQL statement
+	err = stmt.QueryRow(id).Scan(&student.ID, &student.Name, &student.Email, &student.Age)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			slog.Error("Student not found", "error", err)
+			return student, errors.New("student not found")
+		}
+		slog.Error("Error executing SQL statement to get student", "error", err)
+		return student, errors.New("error executing SQL statement to get student: " + err.Error())
+	}
+
+	// Return the student
+	return student, nil
 }

@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/prashantkumbhar2002/go_students_api/internal/http/response"
@@ -13,7 +14,7 @@ import (
 	"github.com/prashantkumbhar2002/go_students_api/internal/storage"
 )
 
-func New(storage storage.Storage) http.HandlerFunc {
+func NewStudentHandler(storage storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request){
 
 		var student types.Student
@@ -50,5 +51,34 @@ func New(storage storage.Storage) http.HandlerFunc {
 
 		slog.Info("Student created", "student", student)
 		response.WriteJson(w, http.StatusCreated, map[string]int64{"id": student.ID})
+	}
+}
+
+func GetStudentHandler(storage storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// id := r.URL.Query().Get("id") // Reading the query parameters
+		id := r.PathValue("id") // Reading the path parameters
+		slog.Info("ID", "id", id)
+		idInt, err := strconv.ParseInt(id, 10, 64)
+		if err != nil {
+			slog.Error("Error parsing ID", "error", err)
+			response.WriteError(w, http.StatusBadRequest, "invalid ID", err.Error())
+			return
+		}
+
+		// Get the student from the database
+		student, err := storage.GetStudent(idInt)
+		if err != nil {
+			if err.Error() == "student not found" {
+				slog.Error("Student not found", "error", err)
+				response.WriteError(w, http.StatusNotFound, "student not found", err.Error())
+				return
+			}
+			slog.Error("Error getting student", "error", err)
+			response.WriteError(w, http.StatusInternalServerError, "internal server error", err.Error())
+			return
+		}
+		slog.Info("Student fetched by ID", "id", idInt, "student", student)
+		response.WriteJson(w, http.StatusOK, student)
 	}
 }
