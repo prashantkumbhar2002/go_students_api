@@ -2,7 +2,7 @@ package response
 
 import (
 	"encoding/json"
-	"log/slog"
+	// "log/slog"
 	"net/http"
 	"fmt"
 	"strings"
@@ -21,7 +21,7 @@ type ErrResponse struct {
 }
 
 func WriteJson(w http.ResponseWriter, status int, data any) error {
-	slog.Info("Writing JSON response", "status", status, "data", data)
+	// slog.Info("Writing JSON response", "status", status, "data", data)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	return json.NewEncoder(w).Encode(data)
