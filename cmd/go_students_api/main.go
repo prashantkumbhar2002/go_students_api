@@ -43,6 +43,7 @@ func main() {
 	})
 
 	router.HandleFunc("POST /students", students.NewStudentHandler(storage))
+	router.HandleFunc("GET /students", students.GetStudentsListHandler(storage))
 	router.HandleFunc("GET /students/{id}", students.GetStudentHandler(storage))
 
 	router.HandleFunc("GET /slow", func(w http.ResponseWriter, r *http.Request) {

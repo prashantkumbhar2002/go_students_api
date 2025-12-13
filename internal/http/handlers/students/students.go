@@ -84,3 +84,27 @@ func GetStudentHandler(store storage.Storage) http.HandlerFunc {
 		response.WriteJson(w, http.StatusOK, student)
 	}
 }
+
+
+func GetStudentsListHandler(store storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Get the students list from the database
+		slog.Info("Getting All the students from the database")
+
+		students, err := store.GetStudentsList()
+		if err != nil {
+			// Use errors.Is() to check for domain-specific errors
+			// This decouples the handler from database implementation details
+			if errors.Is(err, storage.ErrDatabase) {
+				slog.Error("Database error while getting students list", "error", err)
+				response.WriteError(w, http.StatusInternalServerError, "database error", err.Error())
+				return
+			}
+			slog.Error("Internal server error while getting students list", "error", err)
+			response.WriteError(w, http.StatusInternalServerError, "internal server error", err.Error())
+			return
+		}
+		slog.Info("All the students fetched successfully", "number of students", len(students))
+		response.WriteJson(w, http.StatusOK, students)
+	}
+}
