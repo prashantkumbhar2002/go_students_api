@@ -191,3 +191,89 @@ GOOS=linux GOARCH=amd64 go build -o bin/students-api-linux cmd/go_students_api/m
 # Build for Windows
 GOOS=windows GOARCH=amd64 go build -o bin/students-api.exe cmd/go_students_api/main.go
 ```
+
+## Kubernetes Deployment (Kind Cluster)
+
+### Prerequisites
+- Docker installed
+- Kind installed: `curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64 && chmod +x ./kind && sudo mv ./kind /usr/local/bin/`
+- kubectl installed: `curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && chmod +x kubectl && sudo mv kubectl /usr/local/bin/`
+
+### Quick Deploy (5 Steps)
+
+```bash
+# 1. Create Kind cluster
+kind create cluster --config k8s/kind-config.yaml
+
+# 2. Build Docker image
+docker build -t students-api:latest .
+
+# 3. Load image into Kind
+kind load docker-image students-api:latest --name students-api-cluster
+
+# 4. Deploy to Kubernetes
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/configmap.yaml
+kubectl apply -f k8s/pvc.yaml
+kubectl apply -f k8s/deployment.yaml
+kubectl apply -f k8s/service.yaml
+
+# 5. Verify deployment
+kubectl rollout status deployment/students-api -n students-api
+```
+
+**Access API:** http://localhost:30080
+
+### Test Deployment
+
+```bash
+# Health check
+curl http://localhost:30080/
+
+# List students
+curl http://localhost:30080/students
+
+# Create a student
+curl -X POST http://localhost:30080/students \
+  -H "Content-Type: application/json" \
+  -d '{"name":"John Doe","email":"john@example.com","age":22}'
+```
+
+### Useful Commands
+
+```bash
+# View logs
+kubectl logs -f -l app=students-api -n students-api
+
+# Check status
+kubectl get all -n students-api
+
+# Scale replicas
+kubectl scale deployment students-api --replicas=3 -n students-api
+
+# Update after code changes
+docker build -t students-api:latest .
+kind load docker-image students-api:latest --name students-api-cluster
+kubectl rollout restart deployment/students-api -n students-api
+```
+
+### Cleanup
+
+```bash
+# Delete namespace (removes all app resources)
+kubectl delete namespace students-api
+
+# Delete Kind cluster
+kind delete cluster --name students-api-cluster
+
+# Delete Docker image
+docker rmi students-api:latest
+```
+
+### Features
+- ✅ 2 replicas for high availability
+- ✅ Health checks (liveness, readiness, startup probes)
+- ✅ Resource limits (CPU: 500m, Memory: 256Mi)
+- ✅ Persistent storage for SQLite database
+- ✅ Rolling updates (zero-downtime deployments)
+- ✅ Graceful shutdown (40s termination grace period)
