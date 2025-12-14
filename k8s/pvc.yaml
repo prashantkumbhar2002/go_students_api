@@ -1,0 +1,18 @@
+# PersistentVolumeClaim for SQLite Database
+# Provides persistent storage across pod restarts
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: students-api-storage
+  namespace: students-api
+  labels:
+    app: students-api
+    component: storage
+spec:
+  accessModes:
+    - ReadWriteOnce  # Single pod can mount for read/write
+  resources:
+    requests:
+      storage: 1Gi  # 1GB storage for database
+  storageClassName: standard  # Kind default storage class
+

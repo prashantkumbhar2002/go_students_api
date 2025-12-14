@@ -1,0 +1,21 @@
+# ConfigMap for Students API Configuration
+# Production environment settings
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: students-api-config
+  namespace: students-api
+  labels:
+    app: students-api
+    component: config
+data:
+  production.yml: |
+    env: "production"
+    storage_path: "/var/lib/students_api/storage.db"
+    http_server: 
+      host: "0.0.0.0"
+      port: 8080
+      timeout: 10s
+      idle_timeout: 120s
+      shutdown_timeout: 30s
+

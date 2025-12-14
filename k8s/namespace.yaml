@@ -1,0 +1,11 @@
+# Namespace for Students API
+# Isolates resources and provides security boundary
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: students-api
+  labels:
+    app: students-api
+    environment: production
+    managed-by: kubectl
+

@@ -1,0 +1,31 @@
+# Kind Cluster Configuration for Students API
+# Production-like multi-node cluster setup
+apiVersion: kind.x-k8s.io/v1alpha4
+kind: Cluster
+name: students-api-cluster
+nodes:
+  # Control plane node
+  - role: control-plane
+    kubeadmConfigPatches:
+    - |
+      kind: InitConfiguration
+      nodeRegistration:
+        kubeletExtraArgs:
+          node-labels: "ingress-ready=true"
+    extraPortMappings:
+    # Port mapping for NodePort service
+    - containerPort: 30080
+      hostPort: 30080
+      protocol: TCP
+    # # Port mapping for potential Ingress
+    # - containerPort: 80
+    #   hostPort: 80
+    #   protocol: TCP
+    # - containerPort: 443
+    #   hostPort: 443
+    #   protocol: TCP
+  
+  # Worker nodes for high availability
+  - role: worker
+  - role: worker
+

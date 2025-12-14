@@ -1,0 +1,129 @@
+# Deployment for Students API
+# Production-grade configuration with best practices
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: students-api
+  namespace: students-api
+  labels:
+    app: students-api
+    version: v1
+spec:
+  # High availability: multiple replicas
+  replicas: 2
+  
+  # Rolling update strategy for zero-downtime deployments
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1        # Maximum additional pods during update
+      maxUnavailable: 0  # Ensure at least one pod is always available
+  
+  selector:
+    matchLabels:
+      app: students-api
+  
+  template:
+    metadata:
+      labels:
+        app: students-api
+        version: v1
+      # annotations:
+      #   # Prometheus monitoring annotations (if Prometheus is installed)
+      #   prometheus.io/scrape: "true"
+      #   prometheus.io/port: "8080"
+      #   prometheus.io/path: "/metrics"
+    spec:
+      # Security: Run as non-root user
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      
+      # Graceful shutdown handling
+      terminationGracePeriodSeconds: 40
+      
+      containers:
+      - name: students-api
+        image: students-api:latest
+        imagePullPolicy: Never  # Use local image (for Kind cluster)
+        
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        
+        # Environment variables
+        env:
+        - name: CONFIG_PATH
+          value: "/app/config/production.yml"
+        - name: TZ
+          value: "UTC"
+        
+        # Resource management: prevent resource starvation
+        resources:
+          requests:
+            memory: "64Mi"   # Minimum guaranteed memory
+            cpu: "100m"      # Minimum guaranteed CPU (0.1 core)
+          limits:
+            memory: "256Mi"  # Maximum memory before OOMKill
+            cpu: "500m"      # Maximum CPU (0.5 core)
+        
+        # Liveness probe: restart container if unhealthy
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 10  # Wait before first check
+          periodSeconds: 30        # Check every 30 seconds
+          timeoutSeconds: 3        # Timeout for each check
+          failureThreshold: 3      # Restart after 3 failures
+        
+        # Readiness probe: remove from service if not ready
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 5   # Wait before first check
+          periodSeconds: 10        # Check every 10 seconds
+          timeoutSeconds: 3        # Timeout for each check
+          failureThreshold: 3      # Remove from service after 3 failures
+          successThreshold: 1      # Add to service after 1 success
+        
+        # Startup probe: handle slow starting containers
+        startupProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 0
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 10     # Allow 50 seconds for startup
+        
+        # Security context for container
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false  # SQLite needs write access
+          capabilities:
+            drop:
+            - ALL
+        
+        # Volume mounts
+        volumeMounts:
+        - name: storage
+          mountPath: /var/lib/students_api
+        - name: config
+          mountPath: /app/config
+          readOnly: true
+      
+      # Volumes
+      volumes:
+      - name: storage
+        persistentVolumeClaim:
+          claimName: students-api-storage
+      - name: config
+        configMap:
+          name: students-api-config
+

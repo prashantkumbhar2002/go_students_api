@@ -1,0 +1,28 @@
+# Service for Students API
+# Exposes the application via NodePort for local Kind cluster access
+apiVersion: v1
+kind: Service
+metadata:
+  name: students-api-service
+  namespace: students-api
+  labels:
+    app: students-api
+spec:
+  type: NodePort  # Exposes service on a static port on each node
+  
+  selector:
+    app: students-api
+  
+  ports:
+  - name: http
+    port: 8080        # Service port (internal)
+    targetPort: http  # Container port (from deployment)
+    nodePort: 30080   # External port (accessible on host)
+    protocol: TCP
+  
+  # Session affinity for sticky sessions (optional)
+  # sessionAffinity: ClientIP
+  # sessionAffinityConfig:
+  #   clientIP:
+  #     timeoutSeconds: 10800
+
